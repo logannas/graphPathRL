@@ -6,7 +6,7 @@ This project concerns finding the shortest path within a graph using reinforceme
 OpenAI Gym was used to create the environment.
 
 
-## Instalação
+## Install
 
 Install with pip
 
