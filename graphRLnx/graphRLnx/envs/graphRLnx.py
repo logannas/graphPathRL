@@ -14,9 +14,9 @@ np.random.seed(50)
 class graphRLnx(gym.Env):
 
     def __init__(self):
-        self.start_state = 0
-        self.aim_state = [4]
-        self.fire = [3]
+        self.start_state = 1
+        self.aim_state = [4,11]
+        self.fire = [2,3]
         
         self.current_state = self.start_state
         self.reward = 0
@@ -24,9 +24,18 @@ class graphRLnx(gym.Env):
         self.time_step = 0
         self.done = False
         
-        edges = [(0,1), (0,3), (0,2), (1,0), (1,2), (1,3), (2,0), (1,2), (2,4), (3,0), (3,1), (3,4)]
+        self.edges = [(0,1), (1,0), (0,2), (2,0), (0,12), (12,0), (1,2), (2,1), (1,8), (8,1), (1,12), (12,1), 
+         (1,13), (13,1), (2,3), (3,2), (2,8), (8,2), (2,12), (12,2), (3,4), (4,3), (3,8), (8,3), 
+         (3,13), (13,3), (4,5), (5,4), (4,6), (6,4), (4,7), (7,4), (4,9), (9,4), (4,10), (10,4), 
+         (4,14), (14,4), (5,6), (6,5), (5,7), (7,5), (5,10), (10,5), (6,7), (7,6), (6,10), (10,6), 
+         (6,11), (11,6), (7,11), (11,7),(8,12), (12,8), (8,13), (13,8), (9,10), (10,9), (9,13), 
+         (13,9), (9,14), (14,9), (9,16), (16,9), (10,11), (11,10), (10,14), (14,10), (10,15), (15,10), 
+         (11,15), (11,18), (12,13), (13,12), (12,16), (16,12), (13,14), (14,13), (13,16), (16,13), 
+         (14,15), (15,14), (14,16), (16,14), (14,17), (17,14), (15,17), (17,15), (15,18), (18,15), 
+         (16,17), (17,16), (17,18), (18,17)]
+        
         G = nx.Graph()
-        G.add_edges_from(edges)
+        G.add_edges_from(self.edges)
         pos = nx.spring_layout(G)
                 
         #Drawn graph
@@ -36,15 +45,17 @@ class graphRLnx(gym.Env):
                 color_map.append('red')
             elif node in self.aim_state:
                 color_map.append('green')
+            elif node == self.start_state:
+                color_map.append('pink')
             else:
                 color_map.append('blue')
                             
         nx.draw_networkx_nodes(G, pos, node_color=color_map)
         nx.draw_networkx_edges(G, pos)
         nx.draw_networkx_labels(G, pos)
-                
-        pl.show()
-        
+                        
+        plt.show()                
+                        
         self.graph = G
         self.adjacent_mat = nx.adjacency_matrix(self.graph).todense()
         self.num_nodes = len(self.adjacent_mat)
@@ -53,7 +64,7 @@ class graphRLnx(gym.Env):
         
         self.q_table = np.zeros((self.num_nodes, self.num_nodes))  # num_states * num_actions
         
-        self.reset(self.start_state, self.aim_state, self.fire)
+        self.reset(self.start_state, self.aim_state, self.fire, self.edges)
 
     def step(self, action):
         epsilon=0.05 
@@ -63,7 +74,7 @@ class graphRLnx(gym.Env):
         next_state = self.epsilon_greedy(self.current_state, self.q_table, epsilon=epsilon)
         s_next_next = self.epsilon_greedy(next_state, self.q_table, epsilon=-0.2)  # epsilon<0, greedy policy
         if next_state in self.fire:
-                    reward = -10
+            reward = -10
         else:
             reward = -self.adjacent_mat[self.current_state][next_state]
         delta = reward + gamma * self.q_table[next_state, s_next_next] - self.q_table[self.current_state, next_state]
@@ -76,7 +87,7 @@ class graphRLnx(gym.Env):
             self.done = True
         return self.current_state, reward, self.done, {"time_step": self.time_step}
 
-    def reset(self, start_state, aim_state, fire):
+    def reset(self, start_state, aim_state, fire, edges):
         self.start_state = start_state
         self.aim_state = aim_state
         self.fire = fire
@@ -87,9 +98,9 @@ class graphRLnx(gym.Env):
         self.time_step = 0
         self.done = False
         
-        edges = [(0,1), (0,3), (0,2), (1,0), (1,2), (1,3), (2,0), (1,2), (2,4), (3,0), (3,1), (3,4)]
+        self.edges = edges
         G = nx.Graph()
-        G.add_edges_from(edges)
+        G.add_edges_from(self.edges)
         pos = nx.spring_layout(G)
                 
         #Drawn graph
@@ -105,12 +116,12 @@ class graphRLnx(gym.Env):
         nx.draw_networkx_nodes(G, pos, node_color=color_map)
         nx.draw_networkx_edges(G, pos)
         nx.draw_networkx_labels(G, pos)
-                
+        
         self.graph = G
         self.adjacent_mat = nx.adjacency_matrix(self.graph).todense()
         self.num_nodes = len(self.adjacent_mat)
         self.adjacent_mat = nx.adjacency_matrix(self.graph, nodelist=range(self.num_nodes)).toarray()#:D
-            
+                    
     def epsilon_greedy(self,s_curr, q, epsilon):#exploraiton vs exploitation 
         potential_next_states = np.where(np.array(self.adjacent_mat[s_curr]) > 0)[0]
         if random.random() > epsilon:  
